@@ -1,15 +1,11 @@
 #include <cctype>
+#include <getopt.h>
 #include <iostream>
-#include <vector>
 #include <string>
-
-const int MIN_ARGS = 5;
-const int MAX_ARGS = 7;
-const std::string OP_MINUS = "minus";
-const std::string OP_PLUS = "plus";
+#include <vector>
 
 void help() {
-    const char* text = "выбор операции: -o --operation [операция]\nДоступные операции: plus(Сложение), minus(Вычитание)";
+    const char* text = "main -o/--operation [plus/minus] -- [числа]";
     std::cout << text << '\n';
 }
 
@@ -49,56 +45,68 @@ bool is_valid_number(const std::string& number) {
 
 int main(int argc, char** argv)
 {
-    if (argc == 1) {
-        help();
-        return -1;
-    }
-    else if (argc > MAX_ARGS) {
-        std::cout << "Введено слишком много чисел!" << '\n';
-        return -1;
-    }
-    else if (argc < 3) {
-        const std::string flag = argv[1];
-        if ((flag != "-o" && flag != "--operation")) {
-            std::cout << "Неверный флаг" << '\n';
-            return -1;
+    const char* operations = ":ho:";
+    std::string operation;
+    int opt;
+
+    struct option long_options[] = {
+        {"help", no_argument, nullptr, 'h'},
+        {"operation", required_argument, nullptr, 'o'},
+        {0, 0, 0, 0}
+    };
+    
+    while ((opt = getopt_long(argc, argv, operations, long_options, nullptr)) != -1) {
+        switch (opt)
+        {
+        case 'h':
+            help();
+            return 0;
+        case 'o':
+            operation = optarg;
+            break;
+        case ':':
+            std::cout << "Не введён аргумент для опции: " << char(optopt) << '\n';
+            help();
+            return 1;
+        case '?':
+            std::cout << "Неизвестная опция: " << char(optopt) << '\n';
+            help();
+            return 1;
         }
-        std::cout << "Вы не ввели тип операции!" << '\n';
-        return -1;
     }
-    if (argc < 4) {
-        const std::string operation = argv[2];
-        if (operation != OP_PLUS && operation != OP_MINUS) {
-            std::cout << "Неизвестная операция: " << operation << '\n';
-            return -1;
-        }        
+    if (operation.empty()) {
+        std::cout << "Не указана операция!\n";
+        help();
+        return 1;
     }
-    if (argc < MIN_ARGS) {
-        std::cout << "Введено слишком мало чисел!" << '\n';
-        return -1;
+    if (operation != "plus" && operation != "minus") {
+        std::cout << "Неизвестная операция: " << operation << '\n';
+        help();
+        return 1;
+    }
+    
+    if (argc - optind < 2) {
+        std::cout << "Передано недостаточно операндов!\n";
+        return 1;
+    }
+    else if (argc - optind > 4) {
+        std::cout << "Передано больше операндов, чем требуется!\n";
+        return 1;
     }
     std::vector<int> numbers;
-
-    for (int i = 3; i < argc; ++i) {
+    for (int i = optind; i < argc; ++i) {
         std::string num = argv[i];
-        if (is_valid_number(num)) {
-            numbers.push_back(std::stoi(num));
+        if (!is_valid_number(num)) {
+            std::cout << "Введено некорректное число: " << num << '\n';
+            return 1;
         }
-        else {
-            std::cout << "Введено некорректное число!" << '\n';
-            return -1;
-        }
+        numbers.push_back(std::stoi(num));
     }
-
-    int result{};
-    const std::string operation = argv[2];
-
-    if (operation == OP_PLUS) {
-        result = addition(numbers);
+    if (operation == "plus") {
+        std::cout << "Результат: " << addition(numbers) << '\n';
     }
-        else {
-        result = subtraction(numbers);
+    else {
+        std::cout << "Результат: " << subtraction(numbers) << '\n';
     }
-    std::cout << "Результат: " << result << '\n';
     return 0;
 }
